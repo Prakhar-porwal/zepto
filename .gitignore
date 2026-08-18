@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.zepto-chrome/
+.server.log
+.ngrok.log
+.zepto-refresh.log
+.zepto-refresh.lock
+*.log
+
+# secrets — provide via host env vars, never commit
+instamart_profiles.json
+zepto_profile.json
+zepto_refresh.json

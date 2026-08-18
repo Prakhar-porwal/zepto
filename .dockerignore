@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.zepto-chrome/
+*.log
+.git/
+instamart_profiles.json
+zepto_profile.json
+zepto_refresh.json
+tools/

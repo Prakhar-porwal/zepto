@@ -1,0 +1,1401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>traker</title>
+<style>
+  :root {
+    --bg: #08090c;
+    --bg-glow: radial-gradient(1200px 480px at 50% -10%, rgba(124,158,255,0.14), transparent 60%);
+    --panel: #13151b;
+    --panel-2: #191c24;
+    --border: #23262f;
+    --border-soft: #1c1f27;
+    --text: #edeef2;
+    --text-dim: #8e95a3;
+    --text-faint: #565c69;
+    --accent: #7c9eff;
+    --accent-2: #a78bfa;
+    --ok: #34d399;
+    --ok-bg: rgba(52,211,153,0.10);
+    --ok-border: rgba(52,211,153,0.30);
+    --bad: #f8717a;
+    --bad-bg: rgba(248,113,122,0.10);
+    --radius-sm: 8px;
+    --radius: 12px;
+    --radius-lg: 18px;
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg-glow), var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 20px 80px;
+  }
+  .page { max-width: 1140px; margin: 0 auto; }
+  svg { display: block; }
+
+  /* header */
+  .hero { display: flex; align-items: center; gap: 14px; margin-bottom: 32px; }
+  .brand-mark {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center;
+    color: #0a0b10;
+    box-shadow: 0 6px 18px rgba(124,158,255,0.35);
+    flex-shrink: 0;
+  }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 2px; letter-spacing: -0.02em; }
+  .hero p { margin: 0; color: var(--text-dim); font-size: 13.5px; }
+
+  /* toolbar */
+  .toolbar {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+  }
+  .toolbar-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 13px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    flex: 0 0 260px;
+  }
+  .field.grow { flex: 1 1 260px; }
+  .field svg { color: var(--text-faint); flex-shrink: 0; transition: color 0.15s; }
+  .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,158,255,0.14); }
+  .field:focus-within svg { color: var(--accent); }
+  .field input, .field select {
+    all: unset;
+    flex: 1;
+    color: var(--text);
+    font-size: 14px;
+    padding: 11px 0;
+    width: 100%;
+  }
+  .field select { cursor: pointer; }
+  .field select option { background: var(--panel-2); color: var(--text); }
+  .field input::placeholder { color: var(--text-faint); }
+
+  /* platform switcher */
+  .platforms { display: flex; gap: 6px; margin-left: auto; }
+  .platform-btn {
+    all: unset;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    background: var(--panel);
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .platform-btn:hover:not(.disabled) { color: var(--text); border-color: var(--accent); }
+  .platform-btn.active {
+    color: #0a0b10;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+  }
+  .platform-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+  .platform-btn .setup-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--bad);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* mode switcher */
+  .modes {
+    display: inline-flex;
+    gap: 3px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 14px;
+  }
+  .mode-btn {
+    all: unset;
+    cursor: pointer;
+    padding: 7px 15px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+  }
+  .mode-btn:hover { color: var(--text); }
+  .mode-btn.active { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+  /* `all: unset` above resets display, so [hidden] needs saying explicitly */
+  .mode-btn[hidden] { display: none; }
+  [data-for] { display: none; }
+  [data-for].on { display: flex; }
+
+  /* store autocomplete */
+  .combo { position: relative; flex: 0 0 300px; }
+  .combo .field { flex: 1 1 auto; }
+  .combo-list {
+    display: none;
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 5px;
+  }
+  .combo-list.open { display: block; }
+  .combo-caret {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--text-faint);
+    flex-shrink: 0;
+    padding-left: 4px;
+    transition: color 0.15s, transform 0.15s;
+  }
+  .combo-caret:hover { color: var(--text); }
+  .combo-caret.open { transform: rotate(180deg); color: var(--accent); }
+  .combo-group {
+    padding: 8px 10px 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .combo-opt {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .combo-opt:hover, .combo-opt.active { background: rgba(124,158,255,0.14); }
+  .combo-opt .opt-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .combo-opt.picked { background: rgba(124,158,255,0.08); }
+  .combo-opt.picked > div:first-child::after { content: ' ✓'; color: var(--accent); font-weight: 700; }
+  .combo-empty { padding: 10px; font-size: 12.5px; color: var(--text-faint); }
+
+  .store-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .store-chips:empty { margin-top: 0; }
+  .store-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(124,158,255,0.10);
+    border: 1px solid rgba(124,158,255,0.30);
+    border-radius: 999px;
+    padding: 5px 7px 5px 12px;
+    font-size: 12.5px;
+  }
+  .store-chip .chip-city { color: var(--text-faint); font-size: 11px; }
+  .store-chip .remove {
+    display: flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    color: var(--text-faint); cursor: pointer;
+  }
+  .store-chip .remove:hover { background: rgba(248,113,122,0.18); color: var(--bad); }
+
+  /* one block per searched product */
+  .query-section { margin-bottom: 34px; animation: fadeUp 0.25s ease; }
+  .query-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 4px 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .query-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .query-count { font-size: 12px; color: var(--text-faint); }
+  .query-empty {
+    margin: 0 4px;
+    padding: 22px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  button#searchBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #0a0b10;
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(124,158,255,0.25);
+    transition: transform 0.1s, box-shadow 0.15s, opacity 0.15s;
+  }
+  button#searchBtn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(124,158,255,0.35); }
+  button#searchBtn:active:not(:disabled) { transform: translateY(0); }
+  button#searchBtn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+
+  .phones-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+  }
+  .phones-toggle input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+  .phones-toggle .phones-hint { color: var(--text-faint); font-size: 11.5px; }
+
+  .toolbar-hint {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  .recent-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 12px;
+  }
+  .recent-row:empty { margin-top: 0; }
+  .recent-label { font-size: 11px; color: var(--text-faint); margin-right: 2px; }
+  .recent-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 6px 5px 12px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .recent-chip:hover { border-color: var(--accent); color: var(--text); }
+  .recent-chip .remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    color: var(--text-faint);
+  }
+  .recent-chip .remove:hover { background: rgba(248,113,122,0.18); color: var(--bad); }
+
+  /* status */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 20px;
+    margin: 4px 4px 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .status-row.error { color: var(--bad); }
+  .spinner {
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,0.14);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* availability summary */
+  .avail-summary { margin: 0 4px 20px; animation: fadeUp 0.25s ease; }
+  .avail-summary-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ok);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .avail-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .avail-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ok-bg);
+    border: 1px solid var(--ok-border);
+    border-radius: 999px;
+    padding: 7px 14px 7px 11px;
+    font-size: 13px;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .avail-chip:hover { background: rgba(52,211,153,0.18); border-color: rgba(52,211,153,0.55); transform: translateY(-1px); }
+  .avail-chip-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(52,211,153,0.16);
+  }
+  .avail-chip-label { font-weight: 600; color: var(--text); }
+  .avail-chip-price { color: var(--ok); font-weight: 700; font-size: 12px; padding-left: 8px; border-left: 1px solid var(--ok-border); }
+
+  /* table */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: auto;
+    box-shadow: var(--shadow);
+    animation: fadeUp 0.3s ease;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    padding: 14px 18px;
+    font-weight: 600;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th:first-child { border-top-left-radius: var(--radius-lg); }
+  thead th:last-child { border-top-right-radius: var(--radius-lg); }
+  thead th .col-label { color: var(--text); font-weight: 700; font-size: 13.5px; }
+  thead th .store-info { font-weight: 400; font-size: 11px; margin-top: 3px; color: var(--text-faint); }
+  thead th .map-link {
+    display: inline-flex; align-items: center; gap: 3px;
+    margin-top: 5px; font-size: 11px; font-weight: 600;
+    color: var(--accent); text-decoration: none;
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  thead th .map-link:hover { border-color: var(--accent); background: rgba(124,158,255,0.12); }
+  tbody td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: top;
+    background: var(--panel);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:last-child td:first-child { border-bottom-left-radius: var(--radius-lg); }
+  tbody tr:last-child td:last-child { border-bottom-right-radius: var(--radius-lg); }
+  tbody tr:hover td { background: var(--panel-2); }
+
+  .product-cell .name { font-weight: 600; font-size: 13px; line-height: 1.4; max-width: 320px; }
+  .product-cell .name .name-dim { color: var(--text-faint); font-weight: 400; }
+  .product-cell .name .name-diff { color: var(--text); font-weight: 700; }
+  .product-cell .brand { font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
+
+  .avail-cell { min-width: 140px; }
+  .avail-cell .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px 4px 8px;
+    border-radius: 999px;
+    margin-bottom: 6px;
+  }
+  .badge.in { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); }
+  .badge.out { background: var(--bad-bg); color: var(--bad); border: 1px solid rgba(248,113,122,0.28); }
+  .avail-cell .price { font-weight: 700; font-size: 13.5px; }
+  .avail-cell .mrp { font-size: 11px; color: var(--text-faint); text-decoration: line-through; margin-left: 6px; }
+  .avail-cell.missing { color: var(--text-faint); text-align: center; font-size: 16px; }
+
+  /* empty state */
+  .empty {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 70px 20px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    margin: 4px;
+  }
+  .empty svg { color: var(--text-faint); margin-bottom: 4px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .empty-sub { font-size: 13px; color: var(--text-dim); max-width: 340px; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-7-7.58-7-12a7 7 0 0 1 14 0c0 4.42-7 12-7 12z"/>
+          <circle cx="12" cy="9" r="2.5"/>
+        </svg>
+      </div>
+      <div>
+        <h1>traker</h1>
+        <p>Search a product once, see live availability across every location</p>
+      </div>
+      <div class="platforms" id="platforms"></div>
+    </header>
+
+    <div class="toolbar">
+      <div class="modes" id="modes">
+        <button class="mode-btn active" data-mode="pincode">Pincodes</button>
+        <button class="mode-btn" data-mode="city">City</button>
+        <!-- Stores mode is hidden for now; drop the `hidden` attribute to bring
+             it back -- the picker, /api/stores and /api/search-stores all still work -->
+        <button class="mode-btn" data-mode="stores" hidden>Stores</button>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="field" id="pincodesField" data-for="pincode">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-7.58-7-12a7 7 0 0 1 14 0c0 4.42-7 12-7 12z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+          <input id="pincodes" type="text" placeholder="Pincodes, e.g. 122002, 110030" />
+        </div>
+
+        <div class="combo" id="cityField" data-for="city">
+          <div class="field">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="3" width="16" height="18" rx="1.5"/>
+              <path d="M9 21v-4h6v4M9 7.5h.01M9 11h.01M9 14.5h.01M15 7.5h.01M15 11h.01M15 14.5h.01"/>
+            </svg>
+            <input id="cityInput" type="text" autocomplete="off" placeholder="City or town, e.g. Kochi, Jaipur" />
+            <span class="combo-caret" id="cityCaret" title="Show all cities">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
+          <div class="combo-list" id="cityList"></div>
+        </div>
+
+        <div class="combo" id="storeField" data-for="stores">
+          <div class="field">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M8 20v-6h8v6"/>
+            </svg>
+            <input id="storeInput" type="text" autocomplete="off" placeholder="Store name, e.g. Saket, Koramangala" />
+          </div>
+          <div class="combo-list" id="storeList"></div>
+        </div>
+
+        <div class="field grow">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="M21 21l-4.3-4.3"/>
+          </svg>
+          <input id="query" type="text" placeholder="Products, comma separated — e.g. amul milk, brown bread" />
+        </div>
+        <button id="searchBtn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="M21 21l-4.3-4.3"/>
+          </svg>
+          Search
+        </button>
+      </div>
+
+      <div class="store-chips" id="cityChips"></div>
+      <div class="store-chips" id="storeChips"></div>
+      <label class="phones-toggle" id="phonesToggle">
+        <input type="checkbox" id="phonesOnly" />
+        <span>📱 Phones only</span>
+        <span class="phones-hint">show just phone models, hide cases & chargers</span>
+      </label>
+      <div class="toolbar-hint" id="hintRow">Matched to the nearest Instamart darkstore for each pincode — exact match isn't guaranteed.</div>
+      <div class="recent-row" id="recentRow"></div>
+    </div>
+
+    <div class="status-row" id="status"></div>
+    <div id="output"></div>
+
+    <div class="empty" id="empty">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 8l-9-5-9 5 9 5 9-5z"/>
+        <path d="M3 8v8l9 5 9-5V8"/>
+        <path d="M12 13v8"/>
+      </svg>
+      <div class="empty-title">No results yet</div>
+      <div class="empty-sub">Pick pincodes, a city, or named stores — then search one product, or several separated by commas.</div>
+    </div>
+  </div>
+
+<script>
+const queryEl = document.getElementById('query');
+const pincodesEl = document.getElementById('pincodes');
+const cityInputEl = document.getElementById('cityInput');
+const cityListEl = document.getElementById('cityList');
+const cityCaretEl = document.getElementById('cityCaret');
+const cityChipsEl = document.getElementById('cityChips');
+const storeInputEl = document.getElementById('storeInput');
+const storeListEl = document.getElementById('storeList');
+const storeChipsEl = document.getElementById('storeChips');
+const modesEl = document.getElementById('modes');
+const btnEl = document.getElementById('searchBtn');
+const statusEl = document.getElementById('status');
+const outputEl = document.getElementById('output');
+const emptyEl = document.getElementById('empty');
+const hintRowEl = document.getElementById('hintRow');
+const recentRowEl = document.getElementById('recentRow');
+const phonesOnlyEl = document.getElementById('phonesOnly');
+
+const RECENT_KEY = 'traker_recent_searches';
+const RECENT_MAX = 8;
+
+function loadRecent() {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecent(list) {
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+}
+
+function addRecent(query) {
+  const q = query.trim();
+  if (!q) return;
+  let list = loadRecent().filter(item => item.toLowerCase() !== q.toLowerCase());
+  list.unshift(q);
+  list = list.slice(0, RECENT_MAX);
+  saveRecent(list);
+  renderRecent();
+}
+
+function removeRecent(query) {
+  saveRecent(loadRecent().filter(item => item !== query));
+  renderRecent();
+}
+
+function renderRecent() {
+  const list = loadRecent();
+  if (!list.length) {
+    recentRowEl.innerHTML = '';
+    return;
+  }
+  recentRowEl.innerHTML = `
+    <span class="recent-label">Recent:</span>
+    ${list.map(q => `
+      <span class="recent-chip" data-query="${escapeHtml(q)}">
+        <span class="recent-chip-label">${escapeHtml(q)}</span>
+        <span class="remove" data-remove="${escapeHtml(q)}">
+          <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </span>
+      </span>
+    `).join('')}
+  `;
+}
+
+recentRowEl.addEventListener('click', (e) => {
+  const removeTarget = e.target.closest('[data-remove]');
+  if (removeTarget) {
+    removeRecent(removeTarget.dataset.remove);
+    return;
+  }
+  const chip = e.target.closest('.recent-chip');
+  if (chip) {
+    queryEl.value = chip.dataset.query;
+    runSearch();
+  }
+});
+
+pincodesEl.value = '122002, 110030';
+emptyEl.style.display = 'flex';
+
+async function loadCities() {
+  const res = await fetch(`/api/cities?platform=${encodeURIComponent(platform)}`);
+  allCities = (await res.json()).cities;
+  cityInputEl.placeholder = `City or town — ${allCities.length} available`;
+}
+
+/* ---------- platform switching ---------- */
+
+let platform = 'instamart';
+const platformsEl = document.getElementById('platforms');
+
+// platforms hidden from the switcher for now (their code/endpoints still work);
+// clear this to bring Zepto back
+const HIDDEN_PLATFORMS = ['zepto'];
+
+async function loadPlatforms() {
+  const res = await fetch('/api/platforms');
+  const { platforms } = (await res.json());
+  const shown = platforms.filter(p => !HIDDEN_PLATFORMS.includes(p.key));
+  // if the active platform got hidden, fall back to the first visible one
+  if (!shown.some(p => p.key === platform) && shown.length) platform = shown[0].key;
+  platformsEl.innerHTML = shown.map(p => `
+    <button class="platform-btn ${p.key === platform ? 'active' : ''} ${p.ready ? '' : 'disabled'}"
+            data-platform="${escapeHtml(p.key)}" data-ready="${p.ready}"
+            data-reason="${escapeHtml(p.reason || '')}"
+            ${p.ready ? '' : `title="${escapeHtml(p.reason || 'Needs a captured session')}"`}>
+      ${escapeHtml(p.label)}${p.ready ? '' : '<span class="setup-dot"></span>'}
+    </button>
+  `).join('');
+}
+
+platformsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.platform-btn');
+  if (!btn) return;
+  if (btn.dataset.ready !== 'true') {
+    statusEl.className = 'status-row error';
+    statusEl.textContent = btn.dataset.reason ||
+      `${btn.textContent.trim()} needs a captured session first — run tools/import_zepto_curl.py, then reload.`;
+    return;
+  }
+  platform = btn.dataset.platform;
+  for (const b of platformsEl.querySelectorAll('.platform-btn')) {
+    b.classList.toggle('active', b === btn);
+  }
+  // the two platforms have different darkstore networks, so any city or store
+  // already picked refers to the other one's stores
+  cityPicker.clear();
+  storePicker.clear();
+  loadCities();
+  outputEl.innerHTML = '';
+  statusEl.className = 'status-row';
+  statusEl.textContent = '';
+  emptyEl.style.display = 'flex';
+  updateHint();
+});
+
+// Zepto runs through the browser at your one delivery location, so the location
+// pickers don't apply there; say so instead of the per-mode hint.
+function updateHint() {
+  if (platform === 'zepto') {
+    hintRowEl.textContent = 'Zepto searches run through your logged-in browser at your delivery location (~15s per product) — the pincode/city pickers don\'t apply.';
+    for (const f of document.querySelectorAll('[data-for]')) f.style.opacity = '0.4';
+  } else {
+    for (const f of document.querySelectorAll('[data-for]')) f.style.opacity = '';
+    onSelectionChange();
+    if (mode !== 'city') hintRowEl.textContent = HINTS[mode];
+  }
+}
+
+/* ---------- mode switching ---------- */
+
+let mode = 'pincode';
+
+const HINTS = {
+  pincode: 'Matched to the nearest Instamart darkstore for each pincode — exact match isn\'t guaranteed.',
+  city: 'Search every darkstore in one city, or across several at once. Type to find a city or town.',
+  stores: 'Search named darkstores directly, in any combination of cities. Type a locality or a city name to find them.',
+};
+
+function setMode(next) {
+  mode = next;
+  for (const btn of modesEl.querySelectorAll('.mode-btn')) {
+    btn.classList.toggle('active', btn.dataset.mode === next);
+  }
+  for (const field of document.querySelectorAll('[data-for]')) {
+    field.classList.toggle('on', field.dataset.for === next);
+  }
+  cityChipsEl.style.display = next === 'city' ? 'flex' : 'none';
+  storeChipsEl.style.display = next === 'stores' ? 'flex' : 'none';
+  hintRowEl.textContent = HINTS[next];
+  cityPicker.close();
+  storePicker.close();
+  onSelectionChange();
+}
+
+modesEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.mode-btn');
+  if (btn) setMode(btn.dataset.mode);
+});
+
+function selectedPincodes() {
+  return pincodesEl.value.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/* ---------- multi-select pickers (cities and stores share this) ---------- */
+
+const REMOVE_ICON = '<svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+// `suggest` may be async (stores hit the API) or sync (cities are already
+// loaded), so it is always awaited and guarded by a sequence number
+function makePicker({ input, list, chips, caret, keyOf, suggest, optionHtml, chipHtml, emptyText, groupOf }) {
+  const selected = new Map();
+  let items = [];
+  let active = -1;
+  let seq = 0;
+  let timer;
+  let lastTerm = '';
+
+  function close() {
+    list.classList.remove('open');
+    if (caret) caret.classList.remove('open');
+    active = -1;
+  }
+
+  function render() {
+    let lastGroup = null;
+    list.innerHTML = items.length
+      ? items.map((it, i) => {
+          const group = groupOf ? groupOf(it, lastTerm) : null;
+          const header = group && group !== lastGroup ? `<div class="combo-group">${escapeHtml(group)}</div>` : '';
+          lastGroup = group;
+          return header + `
+            <div class="combo-opt ${i === active ? 'active' : ''} ${selected.has(keyOf(it)) ? 'picked' : ''}"
+                 data-key="${escapeHtml(keyOf(it))}">${optionHtml(it)}</div>
+          `;
+        }).join('')
+      : `<div class="combo-empty">${emptyText}</div>`;
+    list.classList.add('open');
+    if (caret) caret.classList.add('open');
+  }
+
+  // an empty query is only "show nothing" for pickers that can't be browsed;
+  // where suggest() can list everything (cities), it opens the full list
+  async function lookup(q) {
+    const term = q.trim();
+    if (!term && !caret) { items = []; close(); return; }
+    const mine = ++seq;
+    const found = await suggest(term);
+    if (mine !== seq) return;  // a newer keystroke already won
+    items = found;
+    lastTerm = term;
+    active = -1;
+    render();
+  }
+
+  // picking is a toggle and leaves the list open -- these are multi-selects,
+  // and one search usually yields several stores you want together
+  function toggle(item) {
+    const key = keyOf(item);
+    if (selected.has(key)) selected.delete(key);
+    else selected.set(key, item);
+    renderChips();
+    if (items.length) render();
+  }
+
+  function renderChips() {
+    chips.innerHTML = [...selected.values()].map(it => `
+      <span class="store-chip">
+        ${chipHtml(it)}
+        <span class="remove" data-remove-key="${escapeHtml(keyOf(it))}">${REMOVE_ICON}</span>
+      </span>
+    `).join('');
+    onSelectionChange();
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => lookup(input.value), 150);
+  });
+  input.addEventListener('focus', () => {
+    if (caret) lookup(input.value);      // browsable: clicking in opens the list
+    else if (items.length) render();
+  });
+
+  if (caret) {
+    caret.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if (list.classList.contains('open')) { close(); return; }
+      input.focus();
+      lookup(input.value);
+    });
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (!list.classList.contains('open')) {
+      if (e.key === 'Enter') runSearch();
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      render();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (active >= 0) toggle(items[active]);
+      else if (items.length === 1) toggle(items[0]);
+      else runSearch();
+    } else if (e.key === 'Escape') {
+      input.value = '';
+      items = [];
+      close();
+    }
+  });
+
+  list.addEventListener('mousedown', (e) => {
+    const opt = e.target.closest('.combo-opt');
+    if (!opt) return;
+    e.preventDefault();
+    const item = items.find(it => keyOf(it) === opt.dataset.key);
+    if (item) toggle(item);
+  });
+
+  chips.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-remove-key]');
+    if (!target) return;
+    selected.delete(target.dataset.removeKey);
+    renderChips();
+  });
+
+  function clear() {
+    selected.clear();
+    items = [];
+    input.value = '';
+    close();
+    renderChips();
+  }
+
+  return { selected, close, lookup, toggle, clear, peek: () => items };
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.combo')) { cityPicker.close(); storePicker.close(); }
+});
+
+/* cities are fetched once at load and filtered in the browser */
+let allCities = [];
+
+const cityPicker = makePicker({
+  input: cityInputEl,
+  list: cityListEl,
+  chips: cityChipsEl,
+  caret: cityCaretEl,
+  keyOf: c => c.key,
+  emptyText: 'No matching city',
+  // with nothing typed this returns every city, so the caret behaves like a
+  // plain dropdown; typing narrows the same list
+  suggest: (q) => {
+    const needle = q.toLowerCase();
+    if (!needle) return allCities;
+    const hits = allCities.filter(c => c.label.toLowerCase().includes(needle));
+    // exact prefix matches first, then bigger cities
+    hits.sort((a, b) => {
+      const ap = a.label.toLowerCase().startsWith(needle) ? 0 : 1;
+      const bp = b.label.toLowerCase().startsWith(needle) ? 0 : 1;
+      return ap - bp || b.store_count - a.store_count;
+    });
+    return hits;
+  },
+  // headings only make sense while browsing -- a filtered list is ranked by
+  // match quality, so curated and auto-grouped entries interleave
+  groupOf: (c, term) => (term ? null : c.curated ? 'Cities' : 'Other locations'),
+  optionHtml: c => `
+    <div>${escapeHtml(c.label)}</div>
+    <div class="opt-sub">${c.store_count} store${c.store_count === 1 ? '' : 's'}</div>
+  `,
+  chipHtml: c => `<span>${escapeHtml(c.label)}</span><span class="chip-city">${c.store_count} store${c.store_count === 1 ? '' : 's'}</span>`,
+});
+
+const storePicker = makePicker({
+  input: storeInputEl,
+  list: storeListEl,
+  chips: storeChipsEl,
+  keyOf: s => s.id,
+  emptyText: 'No matching store',
+  suggest: async (q) => {
+    const res = await fetch(`/api/stores?q=${encodeURIComponent(q)}&platform=${encodeURIComponent(platform)}`);
+    return (await res.json()).stores;
+  },
+  optionHtml: s => `
+    <div>${escapeHtml(s.locality)}</div>
+    <div class="opt-sub">${escapeHtml(s.city_label)} · ${s.distance_km} km from centre</div>
+  `,
+  chipHtml: s => `<span>${escapeHtml(s.locality)}</span><span class="chip-city">${escapeHtml(s.city_label)}</span>`,
+});
+
+// a multi-city search fans out over every store in each city, so say up front
+// how much is about to be hit
+// Zepto's edge rate-limits to roughly one request a second, so a wide search
+// there costs minutes, not seconds -- say so before it is started, not after
+const SECONDS_PER_STORE = { instamart: 0.12, zepto: 1.1 };
+// must match _STORES_PER_CITY on the server: a wide city is sampled, not swept
+const STORES_PER_CITY = { instamart: 40, zepto: 15 };
+
+// stores actually queried once each city is capped to its sample
+function searchedStoreCount(cities) {
+  const cap = STORES_PER_CITY[platform] ?? 25;
+  return cities.reduce((n, c) => n + Math.min(c.store_count, cap), 0);
+}
+
+function etaText(stores, products) {
+  const secs = stores * products * (SECONDS_PER_STORE[platform] ?? 0.2);
+  if (secs < 45) return 'a few seconds';
+  if (secs < 90) return 'about a minute';
+  return `about ${Math.round(secs / 60)} minutes`;
+}
+
+function onSelectionChange() {
+  if (mode !== 'city') return;
+  const cities = [...cityPicker.selected.values()];
+  if (!cities.length) { hintRowEl.textContent = HINTS.city; return; }
+  const total = cities.reduce((n, c) => n + c.store_count, 0);
+  const stores = searchedStoreCount(cities);
+  const products = Math.max(1, splitQueries(queryEl.value).length);
+  const sampled = stores < total ? `${stores} of ${total} darkstores (sampled across the city)` : `${stores} darkstores`;
+  hintRowEl.textContent = `${cities.length} ${cities.length === 1 ? 'city' : 'cities'} · ${sampled} per product — ${etaText(stores, products)} on ${platform === 'zepto' ? 'Zepto' : 'Instamart'}.`;
+}
+
+function money(v) {
+  if (v === undefined || v === null) return '';
+  return '₹' + Number(v).toLocaleString('en-IN');
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+const CHECK_ICON = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+const CROSS_ICON = '<svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+function availCellHtml(item) {
+  if (!item) return `<td class="avail-cell missing">–</td>`;
+  const badge = `<span class="badge ${item.in_stock ? 'in' : 'out'}">${item.in_stock ? CHECK_ICON : CROSS_ICON}${item.in_stock ? 'In Stock' : 'Out of Stock'}</span>`;
+  const price = `<div><span class="price">${money(item.offer_price)}</span>${item.mrp && item.mrp !== item.offer_price ? `<span class="mrp">${money(item.mrp)}</span>` : ''}</div>`;
+  return `<td class="avail-cell"><div>${badge}</div>${price}</td>`;
+}
+
+function metroLabel(m) {
+  if (!m) return null;
+  return `Near ${m.name} (${m.network}, ${m.distance_km} km)`;
+}
+
+// most cities outside the metro-rail networks have no station to anchor to,
+// so fall back to how far the store sits from that city's centre
+function placeLabel(metro, centreKm, centreName) {
+  const metroText = metroLabel(metro);
+  if (metroText) return metroText;
+  if (centreKm == null || !centreName) return null;
+  return `${centreKm} km from ${centreName} centre`;
+}
+
+// normalize the pincode-mode and store-mode result shapes into one common shape
+function normalizeColumns(results, mode, showCity) {
+  if (mode === 'city' || mode === 'stores') {
+    return results.map(r => ({
+      // keyed by store id, not locality: a multi-city search can hold two
+      // same-named localities from different cities in the same table
+      key: r.store_id,
+      label: r.locality,
+      subLabel: showCity ? r.city_label : null,
+      metroLabel: placeLabel(r.nearest_metro, r.distance_km, r.city_label),
+      distanceKm: r.distance_km,
+      lat: r.lat,
+      lng: r.lng,
+      items: r.items,
+      error: r.error,
+    }));
+  }
+  return results.map(r => ({
+    key: r.pincode,
+    label: r.pincode,
+    subLabel: r.store ? `${r.store.locality} (${r.store.distance_km} km)` : null,
+    metroLabel: r.store
+      ? placeLabel(r.store.nearest_metro, r.store.centre_distance_km, r.store.city_label)
+      : null,
+    distanceKm: r.store ? r.store.distance_km : null,
+    lat: r.store ? r.store.lat : null,
+    lng: r.store ? r.store.lng : null,
+    items: r.items,
+    error: r.error,
+  }));
+}
+
+// Instamart's search returns loosely-related items too (cases, chargers,
+// screen protectors for the searched phone, and unrelated models) alongside
+// the actual product, in whatever order their backend ranks them -- not
+// necessarily relevance. We rank by token overlap with the query instead.
+const ACCESSORY_KEYWORDS = [
+  'cover', 'case', 'charger', 'cable', 'adapter', 'protector', 'tempered',
+  'skin', 'pouch', 'stand', 'holder', 'strap', 'mount', 'screen guard', 'screenguard',
+];
+
+// splits on non-alphanumeric AND on letter/digit boundaries, so "iphone17"
+// and "m06" tokenize the same way whether or not the source has a space
+function tokenize(s) {
+  return (s || '')
+    .toLowerCase()
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .replace(/(\d)([a-z])/g, '$1 $2')
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+// fraction of query tokens present anywhere in the item name's tokens
+function matchScore(item, query) {
+  const queryTokens = tokenize(query);
+  if (!queryTokens.length) return 0;
+  const nameTokens = new Set(tokenize(item.name));
+  const matched = queryTokens.filter(t => nameTokens.has(t)).length;
+  return matched / queryTokens.length;
+}
+
+function isPerfectMatch(item, query) {
+  if (!query.trim() || matchScore(item, query) < 1) return false;
+  const name = (item.name || '').toLowerCase();
+  return !ACCESSORY_KEYWORDS.some(k => name.includes(k));
+}
+
+// "Phones only" filter: a real phone listing names its specs -- RAM/Storage in
+// GB, a mAh battery, or "smartphone" -- while accessories name a case/charger.
+// Keep the former, drop the latter. (Verified against Instamart: isolates the
+// actual OPPO K14x / Galaxy M06 / iPhone 15 from their cases and chargers.)
+const PHONE_SPEC = /(\d+\s?gb\s?(ram|storage))|(\d{3,5}\s?mah)|(\bsmartphone\b)/i;
+const PHONE_ACCESSORY = /\b(case|cover|tempered|glass|charger|cable|adapter|protector|screen ?guard|pouch|holder|stand|mount|skin|strap|earphone|headphone|earbud|power ?bank|otg|selfie|grip|lens|ring light|popsocket)\b/i;
+function isPhoneProduct(item) {
+  const name = item.name || '';
+  return PHONE_SPEC.test(name) && !PHONE_ACCESSORY.test(name);
+}
+
+
+// locations with a perfect-match item in stock first, then any in-stock
+// match, then by distance, so the most useful columns are the first thing you see
+function sortByAvailability(columns, query) {
+  return [...columns].sort((a, b) => {
+    const aPerfect = (a.items || []).some(i => i.in_stock && isPerfectMatch(i, query)) ? 1 : 0;
+    const bPerfect = (b.items || []).some(i => i.in_stock && isPerfectMatch(i, query)) ? 1 : 0;
+    if (aPerfect !== bPerfect) return bPerfect - aPerfect;
+    const aStock = (a.items || []).some(i => i.in_stock) ? 1 : 0;
+    const bStock = (b.items || []).some(i => i.in_stock) ? 1 : 0;
+    if (aStock !== bStock) return bStock - aStock;
+    const aDist = a.distanceKm ?? Infinity;
+    const bDist = b.distanceKm ?? Infinity;
+    return aDist - bDist;
+  });
+}
+
+// renders one product's table into `host`; returns how many distinct products
+// were found, so the caller can headline each section
+function renderResults(host, columns, query) {
+  columns = sortByAvailability(columns, query);
+
+  // build one row per distinct product name, one column per location, keeping
+  // only rows relevant to the query
+  const rows = new Map();
+  for (const c of columns) {
+    (c.items || []).forEach((item, itemRank) => {
+      const key = item.name || item.sku_id;
+      if (!rows.has(key)) {
+        // remember the best (lowest) position the platform gave this product;
+        // the platform already ranked by relevance -- especially for synonym
+        // searches like "bhindi"->Lady Finger where our token match can't -- so
+        // we fall back to its order instead of alphabetising
+        rows.set(key, { name: item.name, brand: item.brand, byCol: {}, rank: itemRank });
+      }
+      const row = rows.get(key);
+      row.rank = Math.min(row.rank, itemRank);
+      row.byCol[c.key] = item;
+    });
+  }
+
+  if (!rows.size) {
+    const none = document.createElement('div');
+    none.className = 'query-empty';
+    none.textContent = `Nothing matched "${query}" in the selected location(s).`;
+    host.appendChild(none);
+    return 0;
+  }
+
+  // most relevant product first; same-model variants (RAM/storage/color) are
+  // grouped together so the de-emphasized-repeat styling below reads correctly
+  const groupKey = name => (name || '').split('|')[0].trim().toLowerCase();
+  let sortedRows = Array.from(rows.values()).sort((a, b) => {
+    // our literal token score first (a real "amul milk" match beats a loose one),
+    // then the platform's own ranking (keeps "bhindi"->Lady Finger on top),
+    // then name so same-model variants stay adjacent
+    const scoreDiff = matchScore(b, query) - matchScore(a, query);
+    if (scoreDiff !== 0) return scoreDiff;
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    return groupKey(a.name).localeCompare(groupKey(b.name));
+  });
+
+  // Grocery apps pad a search with unrelated items when the exact thing isn't
+  // stocked (search a phone on Zepto, get keyboards and irons). We can't tell
+  // that junk from a valid synonym ("bhindi"->Lady Finger) by name alone -- both
+  // share no word with the query -- but we can use this rule:
+  //  * if SOME result is an exact name match, the query clearly hit real
+  //    products, so drop the rows that share nothing with it (the padding);
+  //  * if NOTHING matches by name, it's either a synonym or a not-stocked item,
+  //    so show what came back but flag it, rather than silently implying these
+  //    are what you searched for.
+  let looseNote = '';
+  if (phonesOnlyEl.checked) {
+    // deliberate phone hunt: keep only actual phone models, drop everything else
+    const phones = sortedRows.filter(isPhoneProduct);
+    if (!phones.length) {
+      const none = document.createElement('div');
+      none.className = 'query-empty';
+      none.textContent = `No phone models for "${query}" at these locations on this platform. Try the other platform, or a different model.`;
+      host.appendChild(none);
+      return 0;
+    }
+    sortedRows = phones;
+  } else {
+    const bestScore = sortedRows.reduce((m, r) => Math.max(m, matchScore(r, query)), 0);
+    if (bestScore >= 1) {
+      const strong = sortedRows.filter(r => matchScore(r, query) > 0);
+      if (strong.length) sortedRows = strong;
+    } else if (query.trim()) {
+      looseNote = `No exact match for "${query}" here — showing the closest items each store returned.`;
+    }
+  }
+  if (looseNote) {
+    const note = document.createElement('div');
+    note.className = 'query-empty';
+    note.style.textAlign = 'left';
+    note.textContent = 'ⓘ ' + looseNote;
+    host.appendChild(note);
+  }
+
+  function commonPrefixLength(a, b) {
+    let i = 0;
+    const max = Math.min(a.length, b.length);
+    while (i < max && a[i] === b[i]) i++;
+    return i;
+  }
+
+  // for repeated variants of the same model, gray out the shared text and
+  // keep only the differing spec (RAM/storage/color) highlighted
+  function productNameHtml(row, prevRow) {
+    const name = row.name || '';
+    if (prevRow && groupKey(prevRow.name) === groupKey(name)) {
+      const prefixLen = commonPrefixLength(prevRow.name || '', name);
+      return `<span class="name-dim">${escapeHtml(name.slice(0, prefixLen))}</span><span class="name-diff">${escapeHtml(name.slice(prefixLen))}</span>`;
+    }
+    return escapeHtml(name);
+  }
+
+  // in phones-only mode the "in stock / cheapest" summary must count phones too,
+  // otherwise a ₹899 case would masquerade as the cheapest match
+  const summaryMatch = (i) => i.in_stock && isPerfectMatch(i, query)
+    && (!phonesOnlyEl.checked || isPhoneProduct(i));
+  const availableCols = columns.filter(c => (c.items || []).some(summaryMatch));
+  if (availableCols.length) {
+    const summary = document.createElement('div');
+    summary.className = 'avail-summary';
+    summary.innerHTML = `
+      <div class="avail-summary-title">In stock at ${availableCols.length} location${availableCols.length > 1 ? 's' : ''}</div>
+      <div class="avail-chips">
+        ${availableCols.map(c => {
+          const cheapest = (c.items || [])
+            .filter(i => summaryMatch(i) && i.offer_price != null)
+            .sort((a, b) => Number(a.offer_price) - Number(b.offer_price))[0];
+          return `
+            <div class="avail-chip">
+              <span class="avail-chip-dot"></span>
+              <span class="avail-chip-label">${escapeHtml(c.label)}</span>
+              ${cheapest ? `<span class="avail-chip-price">${money(cheapest.offer_price)}</span>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    host.appendChild(summary);
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+  const table = document.createElement('table');
+  table.innerHTML = `
+    <thead><tr>
+      <th>Product</th>
+      ${columns.map(c => `
+        <th>
+          <div class="col-label">${escapeHtml(c.label)}</div>
+          ${c.subLabel ? `<div class="store-info">${escapeHtml(c.subLabel)}</div>` : ''}
+          ${c.metroLabel ? `<div class="store-info">${escapeHtml(c.metroLabel)}</div>` : ''}
+          ${(c.lat != null && c.lng != null) ? `<a class="map-link" href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank" rel="noopener">📍 Open in Maps</a>` : ''}
+        </th>
+      `).join('')}
+    </tr></thead>
+    <tbody>
+      ${sortedRows.map((row, idx) => `
+        <tr>
+          <td class="product-cell">
+            <div class="name">${productNameHtml(row, idx > 0 ? sortedRows[idx - 1] : null)}</div>
+            <div class="brand">${escapeHtml(row.brand)}</div>
+          </td>
+          ${columns.map(c => availCellHtml(row.byCol[c.key])).join('')}
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+  wrap.appendChild(table);
+  host.appendChild(wrap);
+  return sortedRows.length;   // count what we actually show, after dropping padding
+}
+
+// the search box takes a comma-separated list; each product gets its own
+// block of results rather than being mixed into one table
+function splitQueries(raw) {
+  const seen = new Set();
+  return raw.split(',').map(s => s.trim()).filter(q => {
+    if (!q || seen.has(q.toLowerCase())) return false;
+    seen.add(q.toLowerCase());
+    return true;
+  });
+}
+
+function searchUrl(rawQuery) {
+  const q = encodeURIComponent(rawQuery);
+  const p = `&platform=${encodeURIComponent(platform)}`;
+  if (mode === 'city') return `/api/search-city?query=${q}&cities=${encodeURIComponent([...cityPicker.selected.keys()].join(','))}${p}`;
+  if (mode === 'stores') return `/api/search-stores?query=${q}&store_ids=${encodeURIComponent([...storePicker.selected.keys()].join(','))}${p}`;
+  return `/api/search?query=${q}&pincodes=${encodeURIComponent(selectedPincodes().join(','))}${p}`;
+}
+
+function missingTarget() {
+  if (mode === 'city' && !cityPicker.selected.size) return 'Pick at least one city first.';
+  if (mode === 'stores' && !storePicker.selected.size) return 'Add at least one store first.';
+  if (mode === 'pincode' && !selectedPincodes().length) return 'Enter at least one pincode.';
+  return null;
+}
+
+async function runSearch() {
+  const raw = queryEl.value.trim();
+  const queries = splitQueries(raw);
+  if (!queries.length) {
+    statusEl.className = 'status-row error';
+    statusEl.textContent = 'Enter a product to search.';
+    return;
+  }
+  // Zepto goes through the logged-in browser (its full search is signature-locked
+  // to curl), which covers your one delivery location -- so location pickers don't
+  // apply and there's no per-store fan-out.
+  const zeptoBrowser = platform === 'zepto';
+  const missing = zeptoBrowser ? null : missingTarget();
+  if (missing) {
+    statusEl.className = 'status-row error';
+    statusEl.textContent = missing;
+    return;
+  }
+
+  const targetCount = zeptoBrowser
+    ? null
+    : mode === 'stores'
+      ? storePicker.selected.size
+      : mode === 'city'
+        ? searchedStoreCount([...cityPicker.selected.values()])
+        : null;
+  btnEl.disabled = true;
+  statusEl.className = 'status-row';
+  const started = Date.now();
+  const label = zeptoBrowser
+    ? `Searching Zepto for ${queries.length} product${queries.length > 1 ? 's' : ''} via your browser`
+    : `Searching ${queries.length} product${queries.length > 1 ? 's' : ''}` +
+      (targetCount ? ` across ${targetCount} store${targetCount > 1 ? 's' : ''}` : '');
+  const eta = zeptoBrowser
+    ? ` · about ${15 * queries.length}s`
+    : (targetCount ? ` · ${etaText(targetCount, queries.length)}` : '');
+  const tick = () => {
+    const secs = Math.round((Date.now() - started) / 1000);
+    statusEl.innerHTML = `<span class="spinner"></span>${label}${eta} · ${secs}s elapsed`;
+  };
+  tick();
+  const ticker = setInterval(tick, 1000);
+  outputEl.innerHTML = '';
+  emptyEl.style.display = 'none';
+
+  try {
+    const res = await fetch(zeptoBrowser ? `/api/zepto-search?query=${encodeURIComponent(raw)}` : searchUrl(raw));
+    const data = await res.json();
+    if (!res.ok) {
+      statusEl.className = 'status-row error';
+      statusEl.textContent = data.detail || 'Search failed.';
+      loadPlatforms();   // session may have just expired; refresh the badges
+      return;
+    }
+
+    // zepto-browser results are one location; otherwise label columns with their
+    // city only when the table actually mixes cities
+    const renderMode = zeptoBrowser ? 'stores' : mode;
+    const showCity = !zeptoBrowser && (mode === 'stores' || (mode === 'city' && data.cities.length > 1));
+
+    let totalProducts = 0;
+    let locationCount = 0;
+    // stores the platform threw back at us (rate limits, expired session);
+    // dropping their columns silently would understate what was searched
+    let failedTotal = 0;
+    for (const group of data.queries) {
+      const all = normalizeColumns(group.results, renderMode, showCity);
+      const columns = all.filter(c => !c.error);
+      const failed = all.length - columns.length;
+      locationCount = Math.max(locationCount, columns.length);
+      failedTotal = Math.max(failedTotal, failed);
+
+      const section = document.createElement('div');
+      section.className = 'query-section';
+      const head = document.createElement('div');
+      head.className = 'query-head';
+      section.appendChild(head);
+      outputEl.appendChild(section);
+
+      const found = renderResults(section, columns, group.query);
+      totalProducts += found;
+      head.innerHTML = `
+        <span class="query-title">${escapeHtml(group.query)}</span>
+        <span class="query-count">${found} product${found === 1 ? '' : 's'} · ${columns.length} location${columns.length === 1 ? '' : 's'}${failed ? ` · ${failed} unavailable` : ''}</span>
+      `;
+    }
+
+    // when a city has more stores than we sample, say so
+    const sampledNote = (data.total_store_count && data.store_count && data.total_store_count > data.store_count)
+      ? ` · sampled ${data.store_count} of ${data.total_store_count} stores`
+      : '';
+    statusEl.className = 'status-row';
+    statusEl.textContent = `${totalProducts} distinct product(s) across ${locationCount} location(s)` +
+      (data.queries.length > 1 ? ` for ${data.queries.length} searches` : '') +
+      sampledNote +
+      (failedTotal ? ` — ${failedTotal} store(s) did not respond` : '');
+    if (!totalProducts) emptyEl.style.display = 'none';
+    addRecent(raw);
+  } catch (e) {
+    statusEl.className = 'status-row error';
+    statusEl.textContent = 'Network error: ' + e.message;
+  } finally {
+    clearInterval(ticker);
+    btnEl.disabled = false;
+  }
+}
+
+btnEl.addEventListener('click', runSearch);
+queryEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
+queryEl.addEventListener('input', onSelectionChange);
+pincodesEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
+// re-run the last search immediately when the phones filter is toggled
+phonesOnlyEl.addEventListener('change', () => { if (queryEl.value.trim() && outputEl.children.length) runSearch(); });
+
+setMode('pincode');
+loadPlatforms();
+loadCities();
+renderRecent();
+</script>
+</body>
+</html>
