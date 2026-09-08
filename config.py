@@ -274,6 +274,10 @@ CITY_PRESETS = {
     "faridabad": {"label": "Faridabad", "lat": 28.4089, "lng": 77.3178, "radius_km": 9},
     "ghaziabad": {"label": "Ghaziabad", "lat": 28.6692, "lng": 77.4538, "radius_km": 10},
     "greater-noida": {"label": "Greater Noida", "lat": 28.4744, "lng": 77.5040, "radius_km": 12},
+    # Greater Noida West / Noida Extension (Gaur City area): its stores sit ~6km
+    # from Ghaziabad centre but only ~2km from here, so without this they get
+    # swallowed into Ghaziabad. Tight radius keeps legit Noida sectors out.
+    "greater-noida-west": {"label": "Greater Noida West", "lat": 28.615, "lng": 77.435, "radius_km": 3},
     # kept tight on purpose: Mulund and Bhandup sit ~5 km from Thane station
     # but are Mumbai, so the ambiguous band is left to the parent metro
     "thane": {"label": "Thane", "lat": 19.2183, "lng": 72.9781, "radius_km": 4.5},
@@ -412,6 +416,7 @@ CITY_PRESETS = {
 _METRO_KEYS = frozenset(
     {
         "delhi", "gurugram", "noida", "faridabad", "ghaziabad", "greater-noida",
+        "greater-noida-west",
         "bangalore", "mumbai", "thane", "navi-mumbai", "hyderabad", "chennai",
         "pune", "kolkata",
     }

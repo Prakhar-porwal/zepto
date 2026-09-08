@@ -32,7 +32,7 @@ _QTY_KEYS = ("quantityDescription", "packsize", "packSize", "formattedPacksize",
 # 429s without spacing, and the exact ceiling is not documented anywhere. So
 # the interval self-tunes -- widen hard on a 429, drift back down while calls
 # succeed -- rather than hard-coding a guess. Shared across client instances.
-_MIN_INTERVAL_S = 0.6
+_MIN_INTERVAL_S = 0.45
 _MAX_INTERVAL_S = 3.0
 _interval = _MIN_INTERVAL_S
 _rate_lock = asyncio.Lock()

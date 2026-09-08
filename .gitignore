@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 .zepto-chrome/
+.zepto-guest/
+.zepto-guest-*/
 .server.log
 .ngrok.log
 .zepto-refresh.log

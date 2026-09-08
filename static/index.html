@@ -260,11 +260,29 @@
   button#searchBtn:active:not(:disabled) { transform: translateY(0); }
   button#searchBtn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
+  .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin-top: 12px; }
+  .parts-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 12px; }
+  .parts-row:empty { margin-top: 0; }
+  .parts-label { font-size: 12px; color: var(--text-faint); margin-right: 2px; }
+  .part-btn {
+    all: unset; cursor: pointer; padding: 5px 12px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: var(--text-dim);
+    border: 1px solid var(--border); background: var(--panel);
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .part-btn:hover { color: var(--text); border-color: var(--accent); }
+  .part-btn.active { color: #0a0b10; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+  .part-btn .part-range { opacity: 0.7; font-weight: 500; margin-left: 3px; }
+  .price-filter { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-dim); }
+  .price-filter input {
+    width: 84px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 5px 9px; font-size: 13px;
+  }
+  .price-filter input:focus { outline: none; border-color: var(--accent); }
   .phones-toggle {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 12px;
     font-size: 13px;
     color: var(--text-dim);
     cursor: pointer;
@@ -526,12 +544,20 @@
       </div>
 
       <div class="store-chips" id="cityChips"></div>
+      <div class="parts-row" id="partsRow"></div>
       <div class="store-chips" id="storeChips"></div>
-      <label class="phones-toggle" id="phonesToggle">
-        <input type="checkbox" id="phonesOnly" />
-        <span>📱 Phones only</span>
-        <span class="phones-hint">show just phone models, hide cases & chargers</span>
-      </label>
+      <div class="filter-row">
+        <label class="phones-toggle" id="phonesToggle">
+          <input type="checkbox" id="phonesOnly" checked autocomplete="off" />
+          <span>📱 Phones only</span>
+          <span class="phones-hint">show just phone models, hide cases & chargers</span>
+        </label>
+        <label class="price-filter">
+          <span>Min price ₹</span>
+          <input type="number" id="minPrice" min="0" step="500" value="10000" placeholder="0" autocomplete="off" />
+          <span class="phones-hint">hide anything cheaper</span>
+        </label>
+      </div>
       <div class="toolbar-hint" id="hintRow">Matched to the nearest Instamart darkstore for each pincode — exact match isn't guaranteed.</div>
       <div class="recent-row" id="recentRow"></div>
     </div>
@@ -557,6 +583,7 @@ const cityInputEl = document.getElementById('cityInput');
 const cityListEl = document.getElementById('cityList');
 const cityCaretEl = document.getElementById('cityCaret');
 const cityChipsEl = document.getElementById('cityChips');
+const partsRowEl = document.getElementById('partsRow');
 const storeInputEl = document.getElementById('storeInput');
 const storeListEl = document.getElementById('storeList');
 const storeChipsEl = document.getElementById('storeChips');
@@ -568,6 +595,12 @@ const emptyEl = document.getElementById('empty');
 const hintRowEl = document.getElementById('hintRow');
 const recentRowEl = document.getElementById('recentRow');
 const phonesOnlyEl = document.getElementById('phonesOnly');
+const minPriceEl = document.getElementById('minPrice');
+// always start at the ₹10,000 floor, even if the browser tries to restore a
+// value typed in a previous session -- this is the default filter, every load
+minPriceEl.value = '10000';
+// traker is used for phones only, so Phones-only is the default filter, every load
+phonesOnlyEl.checked = true;
 
 const RECENT_KEY = 'traker_recent_searches';
 const RECENT_MAX = 8;
@@ -647,7 +680,7 @@ const platformsEl = document.getElementById('platforms');
 
 // platforms hidden from the switcher for now (their code/endpoints still work);
 // clear this to bring Zepto back
-const HIDDEN_PLATFORMS = ['zepto'];
+const HIDDEN_PLATFORMS = [];
 
 async function loadPlatforms() {
   const res = await fetch('/api/platforms');
@@ -693,13 +726,15 @@ platformsEl.addEventListener('click', (e) => {
 // Zepto runs through the browser at your one delivery location, so the location
 // pickers don't apply there; say so instead of the per-mode hint.
 function updateHint() {
-  if (platform === 'zepto') {
-    hintRowEl.textContent = 'Zepto searches run through your logged-in browser at your delivery location (~15s per product) — the pincode/city pickers don\'t apply.';
+  const zeptoPhones = platform === 'zepto' && phonesOnlyEl.checked;
+  const cityPhones = zeptoPhones && mode === 'city';   // multi-location browser sweep, pickers DO apply
+  if (zeptoPhones && !cityPhones) {
+    hintRowEl.textContent = 'Zepto + Phones only (Pincodes/Stores) runs through the browser at your one delivery location (~15s) — those pickers don\'t apply. Switch to City to sweep phones across locations.';
     for (const f of document.querySelectorAll('[data-for]')) f.style.opacity = '0.4';
   } else {
     for (const f of document.querySelectorAll('[data-for]')) f.style.opacity = '';
     onSelectionChange();
-    if (mode !== 'city') hintRowEl.textContent = HINTS[mode];
+    if (mode !== 'city') { hintRowEl.textContent = HINTS[mode]; partsRowEl.innerHTML = ''; }
   }
 }
 
@@ -933,22 +968,64 @@ const storePicker = makePicker({
 // how much is about to be hit
 // Zepto's edge rate-limits to roughly one request a second, so a wide search
 // there costs minutes, not seconds -- say so before it is started, not after
-const SECONDS_PER_STORE = { instamart: 0.12, zepto: 1.1 };
+const SECONDS_PER_STORE = { instamart: 0.12, zepto: 0.65 };
 // must match _STORES_PER_CITY on the server: a wide city is sampled, not swept
-const STORES_PER_CITY = { instamart: 40, zepto: 15 };
+const STORES_PER_CITY = { instamart: Infinity, zepto: 25 };
+// Zepto "Phones only" across a city goes through a logged-out browser that
+// visits each store's coordinates (~14s/store), so its parts are far smaller
+// than the 25-store guest-API grocery fan-out.
+const ZEPTO_PHONE_PART = 15;
+// Zepto PHONES go through the guest browser sweep (curl can't return phones);
+// Zepto GROCERIES use the fast curl fan-out. So the browser path is phone-gated.
+function zeptoBrowserCity() { return platform === 'zepto' && phonesOnlyEl.checked && mode === 'city'; }
+function currentCap() { return zeptoBrowserCity() ? ZEPTO_PHONE_PART : STORES_PER_CITY[platform]; }
+function currentSecsPerStore() { return zeptoBrowserCity() ? 7 : (SECONDS_PER_STORE[platform] ?? 0.2); }
 
 // stores actually queried once each city is capped to its sample
 function searchedStoreCount(cities) {
-  const cap = STORES_PER_CITY[platform] ?? 25;
+  const cap = currentCap() ?? 25;
   return cities.reduce((n, c) => n + Math.min(c.store_count, cap), 0);
 }
 
 function etaText(stores, products) {
-  const secs = stores * products * (SECONDS_PER_STORE[platform] ?? 0.2);
+  const secs = stores * products * currentSecsPerStore();
   if (secs < 45) return 'a few seconds';
   if (secs < 90) return 'about a minute';
   return `about ${Math.round(secs / 60)} minutes`;
 }
+
+let selectedGroup = 0;
+
+// how many WAF-safe parts the current city selection splits into (Zepto only;
+// Instamart's cap is Infinity so it's always 1 part = all stores)
+function partsCount() {
+  if (mode !== 'city') return 1;
+  const cap = currentCap();
+  if (!isFinite(cap)) return 1;
+  const total = [...cityPicker.selected.values()].reduce((n, c) => n + c.store_count, 0);
+  return total > cap ? Math.ceil(total / cap) : 1;
+}
+
+function renderParts() {
+  const count = partsCount();
+  if (count <= 1) { partsRowEl.innerHTML = ''; selectedGroup = 0; return; }
+  if (selectedGroup >= count) selectedGroup = 0;
+  const cap = currentCap();
+  const total = [...cityPicker.selected.values()].reduce((n, c) => n + c.store_count, 0);
+  partsRowEl.innerHTML = '<span class="parts-label">Too many stores for one Zepto search — pick a part:</span>' +
+    Array.from({ length: count }, (_, i) => {
+      const from = i * cap + 1, to = Math.min((i + 1) * cap, total);
+      return `<button class="part-btn ${i === selectedGroup ? 'active' : ''}" data-group="${i}">Part ${String.fromCharCode(65 + i)} <span class="part-range">${from}–${to}</span></button>`;
+    }).join('');
+}
+
+partsRowEl.addEventListener('click', (e) => {
+  const b = e.target.closest('.part-btn');
+  if (!b) return;
+  selectedGroup = Number(b.dataset.group);
+  renderParts();
+  if (queryEl.value.trim() && outputEl.children.length) runSearch();
+});
 
 function onSelectionChange() {
   if (mode !== 'city') return;
@@ -957,8 +1034,10 @@ function onSelectionChange() {
   const total = cities.reduce((n, c) => n + c.store_count, 0);
   const stores = searchedStoreCount(cities);
   const products = Math.max(1, splitQueries(queryEl.value).length);
-  const sampled = stores < total ? `${stores} of ${total} darkstores (sampled across the city)` : `${stores} darkstores`;
+  const parts = partsCount();
+  const sampled = parts > 1 ? `${stores} stores per part (${parts} parts)` : (stores < total ? `${stores} of ${total} darkstores` : `${stores} darkstores`);
   hintRowEl.textContent = `${cities.length} ${cities.length === 1 ? 'city' : 'cities'} · ${sampled} per product — ${etaText(stores, products)} on ${platform === 'zepto' ? 'Zepto' : 'Instamart'}.`;
+  renderParts();
 }
 
 function money(v) {
@@ -1064,15 +1143,23 @@ function isPerfectMatch(item, query) {
 }
 
 // "Phones only" filter: a real phone listing names its specs -- RAM/Storage in
-// GB, a mAh battery, or "smartphone" -- while accessories name a case/charger.
+// GB (RAM or storage), a mAh battery, "smartphone", or "iPhone <n>" -- while
+// accessories name a case/charger (and storage media, now excluded too).
 // Keep the former, drop the latter. (Verified against Instamart: isolates the
 // actual OPPO K14x / Galaxy M06 / iPhone 15 from their cases and chargers.)
-const PHONE_SPEC = /(\d+\s?gb\s?(ram|storage))|(\d{3,5}\s?mah)|(\bsmartphone\b)/i;
-const PHONE_ACCESSORY = /\b(case|cover|tempered|glass|charger|cable|adapter|protector|screen ?guard|pouch|holder|stand|mount|skin|strap|earphone|headphone|earbud|power ?bank|otg|selfie|grip|lens|ring light|popsocket)\b/i;
+const PHONE_SPEC = /(\d+\s?gb\b)|(\d{3,5}\s?mah)|(\bsmartphone\b)|(\biphone\s?\d)/i;
+const PHONE_ACCESSORY = /\b(case|cover|tempered|glass|charger|cable|adapter|protector|screen ?guard|pouch|holder|stand|mount|skin|strap|earphone|headphone|earbud|power ?bank|otg|selfie|grip|lens|ring light|popsocket|memory card|pen ?drive|sd ?card|micro ?sd|ssd|hard ?disk|flash ?drive)\b/i;
 function isPhoneProduct(item) {
   const name = item.name || '';
   return PHONE_SPEC.test(name) && !PHONE_ACCESSORY.test(name);
 }
+
+// A query naming a phone brand/model ("oppo k14x", "galaxy m06") is clearly a
+// phone hunt. Zepto's multi-location (guest) path only returns groceries, so
+// such a query comes back empty there unless "Phones only" is on -- detecting it
+// lets us nudge toward that toggle instead of a dead-end "nothing matched".
+const PHONE_QUERY = /\b(oppo|vivo|samsung|galaxy|redmi|realme|motorola|moto|iphone|apple|oneplus|one ?plus|poco|nokia|xiaomi|iqoo|infinix|tecno|lava|nothing ?phone|pixel|honor|itel|micromax)\b/i;
+function looksLikePhoneQuery(q) { return PHONE_QUERY.test(q || ''); }
 
 
 // locations with a perfect-match item in stock first, then any in-stock
@@ -1118,7 +1205,13 @@ function renderResults(host, columns, query) {
   if (!rows.size) {
     const none = document.createElement('div');
     none.className = 'query-empty';
-    none.textContent = `Nothing matched "${query}" in the selected location(s).`;
+    if (platform === 'zepto' && !phonesOnlyEl.checked && looksLikePhoneQuery(query)) {
+      // phone searched through the grocery (multi-location) path -- point at the toggle
+      none.innerHTML = `Nothing matched "${escapeHtml(query)}" here. Zepto's multi-location search only covers groceries — `
+        + `to find phones, tick <strong>📱 Phones only</strong> above (it searches your delivery location).`;
+    } else {
+      none.textContent = `Nothing matched "${query}" in the selected location(s).`;
+    }
     host.appendChild(none);
     return 0;
   }
@@ -1166,6 +1259,20 @@ function renderResults(host, columns, query) {
       looseNote = `No exact match for "${query}" here — showing the closest items each store returned.`;
     }
   }
+  // price floor -- keep only products priced at/above the minimum (any store)
+  const minPrice = Number(minPriceEl.value) || 0;
+  if (minPrice > 0) {
+    sortedRows = sortedRows.filter(r =>
+      Object.values(r.byCol).some(i => Number(i.offer_price) >= minPrice));
+    if (!sortedRows.length) {
+      const none = document.createElement('div');
+      none.className = 'query-empty';
+      none.textContent = `Nothing at ₹${minPrice.toLocaleString('en-IN')} or above for "${query}".`;
+      host.appendChild(none);
+      return 0;
+    }
+  }
+
   if (looseNote) {
     const note = document.createElement('div');
     note.className = 'query-empty';
@@ -1266,7 +1373,7 @@ function splitQueries(raw) {
 function searchUrl(rawQuery) {
   const q = encodeURIComponent(rawQuery);
   const p = `&platform=${encodeURIComponent(platform)}`;
-  if (mode === 'city') return `/api/search-city?query=${q}&cities=${encodeURIComponent([...cityPicker.selected.keys()].join(','))}${p}`;
+  if (mode === 'city') return `/api/search-city?query=${q}&cities=${encodeURIComponent([...cityPicker.selected.keys()].join(','))}${p}` + (partsCount() > 1 ? `&group=${selectedGroup}` : '');
   if (mode === 'stores') return `/api/search-stores?query=${q}&store_ids=${encodeURIComponent([...storePicker.selected.keys()].join(','))}${p}`;
   return `/api/search?query=${q}&pincodes=${encodeURIComponent(selectedPincodes().join(','))}${p}`;
 }
@@ -1289,7 +1396,8 @@ async function runSearch() {
   // Zepto goes through the logged-in browser (its full search is signature-locked
   // to curl), which covers your one delivery location -- so location pickers don't
   // apply and there's no per-store fan-out.
-  const zeptoBrowser = platform === 'zepto';
+  const zeptoCityPhones = platform === 'zepto' && phonesOnlyEl.checked && mode === 'city';  // browser sweep (phones, multi-location)
+  const zeptoBrowser = platform === 'zepto' && phonesOnlyEl.checked && !zeptoCityPhones;    // single delivery location (pincode/stores + phones)
   const missing = zeptoBrowser ? null : missingTarget();
   if (missing) {
     statusEl.className = 'status-row error';
@@ -1324,7 +1432,10 @@ async function runSearch() {
   emptyEl.style.display = 'none';
 
   try {
-    const res = await fetch(zeptoBrowser ? `/api/zepto-search?query=${encodeURIComponent(raw)}` : searchUrl(raw));
+    const res = await fetch(
+      zeptoBrowser ? `/api/zepto-search?query=${encodeURIComponent(raw)}`
+      : zeptoCityPhones ? `/api/zepto-city-search?query=${encodeURIComponent(raw)}&cities=${encodeURIComponent([...cityPicker.selected.keys()].join(','))}` + (partsCount() > 1 ? `&group=${selectedGroup}` : '')
+      : searchUrl(raw));
     const data = await res.json();
     if (!res.ok) {
       statusEl.className = 'status-row error';
@@ -1390,7 +1501,12 @@ queryEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch();
 queryEl.addEventListener('input', onSelectionChange);
 pincodesEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
 // re-run the last search immediately when the phones filter is toggled
-phonesOnlyEl.addEventListener('change', () => { if (queryEl.value.trim() && outputEl.children.length) runSearch(); });
+phonesOnlyEl.addEventListener('change', () => { updateHint(); if (queryEl.value.trim() && outputEl.children.length) runSearch(); });
+let minPriceTimer;
+minPriceEl.addEventListener('input', () => {
+  clearTimeout(minPriceTimer);
+  minPriceTimer = setTimeout(() => { if (queryEl.value.trim() && outputEl.children.length) runSearch(); }, 500);
+});
 
 setMode('pincode');
 loadPlatforms();

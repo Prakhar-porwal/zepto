@@ -22,10 +22,11 @@ sys.path.insert(0, str(ROOT))
 
 from clients.zepto import ZeptoClient  # noqa: E402
 
-PHONE = re.compile(r"(\d+\s?GB\s?(RAM|Storage))|(\d{3,5}\s?mAh)", re.I)
+PHONE = re.compile(r"(\d+\s?GB\b)|(\d{3,5}\s?mAh)|(\bsmartphone\b)|(\biPhone\s?\d)", re.I)
 ACCESSORY = re.compile(
     r"\b(case|cover|tempered|glass|charger|cable|adapter|protector|holder|stand|mount|"
-    r"pouch|skin|earphone|headphone|earbud|power ?bank|otg|selfie)\b", re.I)
+    r"pouch|skin|earphone|headphone|earbud|power ?bank|otg|selfie|"
+    r"memory card|pen ?drive|sd ?card|micro ?sd|ssd|hard ?disk|flash ?drive)\b", re.I)
 
 
 def is_phone(name: str) -> bool:
