@@ -52,7 +52,7 @@ for (let i = 0; i < 60; i++) {
   } catch {}
   await sleep(300);
 }
-if (!target) { log('could not attach to Chrome'); chrome.kill(); process.exit(2); }
+if (!target) { log('could not attach to Chrome'); chrome.kill('SIGKILL'); process.exit(2); }
 
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise(r => ws.addEventListener('open', r));
@@ -72,11 +72,11 @@ while (Date.now() - started < DEADLINE_MS) {
   const access = jar.accessToken;
   if (access && tokenExpiry(access) * 1000 > Date.now() + 60000) {
     process.stdout.write(JSON.stringify({ accessToken: access, refreshToken: jar.refreshToken || null }) + '\n');
-    ws.close(); chrome.kill();
+    ws.close(); chrome.kill('SIGKILL');
     process.exit(0);
   }
   await sleep(2500);
 }
 log('timed out with no valid token. Log in at zepto.com in the open window, then re-run.');
-ws.close(); chrome.kill();
+ws.close(); chrome.kill('SIGKILL');
 process.exit(3);

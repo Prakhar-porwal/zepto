@@ -4,7 +4,7 @@
 # explicitly here. Only actually opens Chrome when the token is about to lapse.
 set -euo pipefail
 
-ROOT="/Users/prakharporwal/Downloads/traker"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Homebrew (node) + system paths; cron's default PATH omits /opt/homebrew/bin
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 

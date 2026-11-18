@@ -14,7 +14,7 @@ const query = process.argv[2];
 if (!query) { console.error('usage: node tools/zepto_phone.mjs "<phone query>"'); process.exit(2); }
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const PROFILE = '/Users/prakharporwal/Downloads/traker/.zepto-chrome';
+const PROFILE = new URL('../.zepto-chrome', import.meta.url).pathname;
 const PORT = 9441;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 

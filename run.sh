@@ -2,7 +2,7 @@
 # Start traker (server + public ngrok tunnel) and print the live URL.
 # Idempotent: skips whatever is already running.
 set -uo pipefail
-ROOT="/Users/prakharporwal/Downloads/traker"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 # 1. API server on :8000

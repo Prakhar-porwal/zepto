@@ -25,7 +25,7 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 // location pays the WAF-challenge cost. Never logged in.
 // PROFILE and PORT are overridable so several sweepers can run in parallel,
 // each with its own guest profile + debug port (a profile backs one Chrome).
-const PROFILE = process.env.ZEPTO_PROFILE || '/Users/prakharporwal/Downloads/traker/.zepto-guest';
+const PROFILE = process.env.ZEPTO_PROFILE || new URL('../.zepto-guest', import.meta.url).pathname;
 const PORT = Number(process.env.ZEPTO_PORT || 9449);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 

@@ -12,7 +12,7 @@
 # those, run the one line again. Stop it with:  pkill -f zepto_keeper
 set -uo pipefail
 
-ROOT="/Users/prakharporwal/Downloads/traker"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 cd "$ROOT"
 
